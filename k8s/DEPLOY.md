@@ -168,6 +168,19 @@ kubectl get secret stock-portfolio-secret -n stock-portfolio -o yaml
 kubectl get configmap stock-portfolio-config -n stock-portfolio -o yaml
 ```
 
+### 6.4 ビルドエラーの問題
+```bash
+# トラブルシューティングスクリプトを実行
+./scripts/troubleshoot-build.sh
+
+# 手動でキャッシュをクリア
+docker system prune -f
+
+# 代替Dockerfileでビルド
+cd backend && docker build -f Dockerfile.npm-install .
+cd ../frontend && docker build -f Dockerfile.npm-install .
+```
+
 ## 7. 更新とロールバック
 
 ### 7.1 アプリケーションの更新

@@ -74,9 +74,12 @@ router.post('/', async (req, res, next) => {
   try {
     const stockData = req.body;
     
+    console.log('株式追加リクエスト:', stockData);
+    
     // バリデーション
     const errors = validateStockData(stockData);
     if (errors.length > 0) {
+      console.log('バリデーションエラー:', errors);
       return res.status(400).json({
         error: '入力データにエラーがあります',
         details: errors
@@ -91,9 +94,13 @@ router.post('/', async (req, res, next) => {
       buy_price: parseFloat(stockData.buy_price)
     };
 
+    console.log('正規化されたデータ:', normalizedData);
+
     const newStock = await notionService.addStock(normalizedData);
+    console.log('追加成功:', newStock);
     res.status(201).json(newStock);
   } catch (error) {
+    console.error('株式追加エラー:', error);
     next(error);
   }
 });

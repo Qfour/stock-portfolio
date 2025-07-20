@@ -110,6 +110,28 @@ chmod +x scripts/quick-start-macos.sh
 
 詳細な手順は `k8s/DEPLOY.md` を参照してください。
 
+### トラブルシューティング
+
+ビルド時にエラーが発生した場合：
+
+```bash
+# トラブルシューティングスクリプトを実行
+./scripts/troubleshoot-build.sh
+
+# または手動でキャッシュをクリア
+docker system prune -f
+```
+
+よくある問題：
+- **npm ci エラー**: 代替の `Dockerfile.npm-install` を使用
+- **プラットフォームエラー**: `--platform linux/amd64` フラグを確認
+- **ネットワークエラー**: インターネット接続とnpmレジストリへのアクセスを確認
+- **銘柄追加エラー**: 環境変数の設定を確認
+  ```bash
+  # APIデバッグスクリプトを実行
+  ./scripts/debug-api.sh
+  ```
+
 ## ライセンス
 
 MIT License 

@@ -8,8 +8,8 @@ WORKDIR /app
 # パッケージファイルをコピー
 COPY package*.json ./
 
-# 依存関係をインストール
-RUN npm ci --only=production --no-audit --no-fund --prefer-offline
+# 依存関係をインストール（npm ciの代替）
+RUN npm install --only=production --no-audit --no-fund --prefer-offline
 
 # アプリケーションコードをコピー
 COPY . .

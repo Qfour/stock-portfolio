@@ -39,10 +39,18 @@ app.use('/api/price', priceRoutes);
 
 // ヘルスチェック
 app.get('/api/health', (req, res) => {
+  const envStatus = {
+    NOTION_TOKEN: !!process.env.NOTION_TOKEN,
+    NOTION_DATABASE_ID: !!process.env.NOTION_DATABASE_ID,
+    NODE_ENV: process.env.NODE_ENV || 'development'
+  };
+  
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: envStatus,
+    version: '1.0.0'
   });
 });
 
@@ -61,7 +69,26 @@ app.use((err, req, res, next) => {
   });
 });
 
+// 環境変数チェック
+const checkEnvironmentVariables = () => {
+  const requiredVars = ['NOTION_TOKEN', 'NOTION_DATABASE_ID'];
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error('❌ 必要な環境変数が設定されていません:', missingVars);
+    console.error('💡 .envファイルまたは環境変数を設定してください');
+    process.exit(1);
+  }
+  
+  console.log('✅ 環境変数の設定を確認しました');
+  console.log(`📊 Notion Database ID: ${process.env.NOTION_DATABASE_ID.substring(0, 8)}...`);
+};
+
 app.listen(PORT, () => {
-  console.log(`サーバーがポート ${PORT} で起動しました`);
-  console.log(`環境: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🚀 サーバーがポート ${PORT} で起動しました`);
+  console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+  
+  // 環境変数チェック
+  checkEnvironmentVariables();
 }); 

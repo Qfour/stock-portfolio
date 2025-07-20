@@ -28,14 +28,26 @@ echo "✅ ローカルレジストリが起動しています"
 # バックエンドイメージのビルド
 echo "🔨 バックエンドイメージをビルド中..."
 cd backend
-docker build --platform linux/amd64 -t $REGISTRY/$BACKEND_IMAGE:$VERSION .
+if ! docker build --platform linux/amd64 -t $REGISTRY/$BACKEND_IMAGE:$VERSION .; then
+    echo "⚠️  npm ci でビルドに失敗しました。npm install で再試行します..."
+    if ! docker build --platform linux/amd64 -f Dockerfile.npm-install -t $REGISTRY/$BACKEND_IMAGE:$VERSION .; then
+        echo "❌ バックエンドイメージのビルドに失敗しました"
+        exit 1
+    fi
+fi
 docker tag $REGISTRY/$BACKEND_IMAGE:$VERSION $REGISTRY/$BACKEND_IMAGE:latest
 echo "✅ バックエンドイメージビルド完了"
 
 # フロントエンドイメージのビルド
 echo "🔨 フロントエンドイメージをビルド中..."
 cd ../frontend
-docker build --platform linux/amd64 -t $REGISTRY/$FRONTEND_IMAGE:$VERSION .
+if ! docker build --platform linux/amd64 -t $REGISTRY/$FRONTEND_IMAGE:$VERSION .; then
+    echo "⚠️  npm ci でビルドに失敗しました。npm install で再試行します..."
+    if ! docker build --platform linux/amd64 -f Dockerfile.npm-install -t $REGISTRY/$FRONTEND_IMAGE:$VERSION .; then
+        echo "❌ フロントエンドイメージのビルドに失敗しました"
+        exit 1
+    fi
+fi
 docker tag $REGISTRY/$FRONTEND_IMAGE:$VERSION $REGISTRY/$FRONTEND_IMAGE:latest
 echo "✅ フロントエンドイメージビルド完了"
 

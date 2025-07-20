@@ -38,6 +38,19 @@ class NotionService {
   // 株式追加
   async addStock(stockData) {
     try {
+      // 環境変数の確認
+      if (!process.env.NOTION_TOKEN) {
+        throw new Error('NOTION_TOKENが設定されていません');
+      }
+      if (!process.env.NOTION_DATABASE_ID) {
+        throw new Error('NOTION_DATABASE_IDが設定されていません');
+      }
+
+      console.log('Notion API 呼び出し:', {
+        databaseId,
+        stockData
+      });
+
       const response = await notion.pages.create({
         parent: { database_id: databaseId },
         properties: {
@@ -78,6 +91,8 @@ class NotionService {
         },
       });
 
+      console.log('Notion API 成功:', response.id);
+
       return {
         id: response.id,
         ticker: stockData.ticker,
@@ -89,7 +104,17 @@ class NotionService {
       };
     } catch (error) {
       console.error('Notion API エラー:', error);
-      throw new Error('株式の追加に失敗しました');
+      
+      // より詳細なエラーメッセージ
+      if (error.code === 'unauthorized') {
+        throw new Error('Notion APIの認証に失敗しました。トークンを確認してください。');
+      } else if (error.code === 'object_not_found') {
+        throw new Error('Notionデータベースが見つかりません。データベースIDを確認してください。');
+      } else if (error.code === 'validation_error') {
+        throw new Error('入力データの形式が正しくありません。');
+      } else {
+        throw new Error(`株式の追加に失敗しました: ${error.message}`);
+      }
     }
   }
 

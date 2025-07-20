@@ -90,6 +90,17 @@ const StockForm = () => {
       });
     } catch (error) {
       console.error('銘柄追加エラー:', error);
+      
+      // 詳細なエラー情報をログ出力
+      if (error.response) {
+        console.error('レスポンスエラー:', error.response.data);
+        console.error('ステータス:', error.response.status);
+      } else if (error.request) {
+        console.error('リクエストエラー:', error.request);
+      } else {
+        console.error('その他のエラー:', error.message);
+      }
+      
       if (error.response?.data?.details) {
         const apiErrors = error.response.data.details;
         const newErrors = {};
@@ -100,8 +111,13 @@ const StockForm = () => {
           if (error.includes('取得単価')) newErrors.buy_price = error;
         });
         setErrors(newErrors);
+      } else if (error.response?.data?.error) {
+        // サーバーからのエラーメッセージを表示
+        showSnackbar(error.response.data.error, 'error');
       } else {
-        showSnackbar('銘柄の追加に失敗しました', 'error');
+        // ネットワークエラーなどの場合
+        const errorMessage = error.message || '銘柄の追加に失敗しました';
+        showSnackbar(errorMessage, 'error');
       }
     } finally {
       setLoading(false);
