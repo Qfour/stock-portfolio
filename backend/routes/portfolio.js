@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const notionService = require('../services/notionService');
-const priceService = require('../services/priceService');
+const admin = require('firebase-admin');
+const db = admin.firestore();
+const collection = db.collection('portfolio');
 
 // バリデーション関数
 const validateStockData = (data) => {
@@ -26,123 +27,55 @@ const validateStockData = (data) => {
   return errors;
 };
 
-// ポートフォリオ一覧取得（株価付き）
-router.get('/', async (req, res, next) => {
+// GET /api/portfolio - 全ポートフォリオ取得
+router.get('/', async (req, res) => {
   try {
-    const portfolio = await notionService.getPortfolio();
-    
-    if (portfolio.length === 0) {
-      return res.json({
-        portfolio: [],
-        summary: {
-          totalValue: 0,
-          totalCost: 0,
-          totalProfit: 0,
-          totalProfitPercent: 0
-        }
-      });
-    }
-
-    // 株価を取得
-    const tickers = portfolio.map(stock => stock.ticker);
-    const { prices, errors } = await priceService.getMultipleStockPrices(tickers);
-    
-    // ポートフォリオの評価額を計算
-    const result = priceService.calculatePortfolioValue(portfolio, prices);
-    
-    res.json({
-      ...result,
-      errors // 株価取得エラーがあれば含める
-    });
-  } catch (error) {
-    next(error);
+    const snapshot = await collection.get();
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch portfolio' });
   }
 });
 
-// ポートフォリオ一覧取得（株価なし）
+// GET /api/portfolio/basic - ポートフォリオ一覧取得（株価なし）
 router.get('/basic', async (req, res, next) => {
   try {
-    const portfolio = await notionService.getPortfolio();
-    res.json({ portfolio });
-  } catch (error) {
-    next(error);
+    const snapshot = await collection.get();
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch portfolio' });
   }
 });
 
-// 株式追加
-router.post('/', async (req, res, next) => {
+// POST /api/portfolio - 新規追加
+router.post('/', async (req, res) => {
   try {
-    const stockData = req.body;
-    
-    console.log('株式追加リクエスト:', stockData);
-    
-    // バリデーション
-    const errors = validateStockData(stockData);
-    if (errors.length > 0) {
-      console.log('バリデーションエラー:', errors);
-      return res.status(400).json({
-        error: '入力データにエラーがあります',
-        details: errors
-      });
-    }
-
-    // データの正規化
-    const normalizedData = {
-      ticker: stockData.ticker.trim().toUpperCase(),
-      name: stockData.name.trim(),
-      shares: parseFloat(stockData.shares),
-      buy_price: parseFloat(stockData.buy_price)
-    };
-
-    console.log('正規化されたデータ:', normalizedData);
-
-    const newStock = await notionService.addStock(normalizedData);
-    console.log('追加成功:', newStock);
-    res.status(201).json(newStock);
-  } catch (error) {
-    console.error('株式追加エラー:', error);
-    next(error);
+    const docRef = await collection.add(req.body);
+    res.json({ id: docRef.id });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add portfolio item' });
   }
 });
 
-// 株式更新
-router.put('/:id', async (req, res, next) => {
+// PUT /api/portfolio/:id - 編集
+router.put('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const stockData = req.body;
-    
-    // バリデーション
-    const errors = validateStockData(stockData);
-    if (errors.length > 0) {
-      return res.status(400).json({
-        error: '入力データにエラーがあります',
-        details: errors
-      });
-    }
-
-    // データの正規化
-    const normalizedData = {
-      ticker: stockData.ticker.trim().toUpperCase(),
-      name: stockData.name.trim(),
-      shares: parseFloat(stockData.shares),
-      buy_price: parseFloat(stockData.buy_price)
-    };
-
-    const updatedStock = await notionService.updateStock(id, normalizedData);
-    res.json(updatedStock);
-  } catch (error) {
-    next(error);
+    await collection.doc(req.params.id).update(req.body);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update portfolio item' });
   }
 });
 
-// 株式削除
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/portfolio/:id - 削除
+router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await notionService.deleteStock(id);
-    res.json({ message: '株式を削除しました' });
-  } catch (error) {
-    next(error);
+    await collection.doc(req.params.id).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete portfolio item' });
   }
 });
 

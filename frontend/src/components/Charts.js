@@ -39,8 +39,8 @@ const Charts = () => {
     try {
       setLoading(true);
       const response = await portfolioAPI.getPortfolio();
-      setPortfolio(response.data.portfolio || []);
-      setErrors(response.data.errors || []);
+      setPortfolio(response.data || []);
+      setErrors([]);
     } catch (error) {
       console.error('ポートフォリオ取得エラー:', error);
       showSnackbar('ポートフォリオの取得に失敗しました', 'error');

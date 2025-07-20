@@ -42,14 +42,14 @@ const PortfolioList = () => {
     try {
       setLoading(true);
       const response = await portfolioAPI.getPortfolio();
-      setPortfolio(response.data.portfolio || []);
-      setSummary(response.data.summary || {
+      setPortfolio(response.data || []);
+      setSummary({
         totalValue: 0,
         totalCost: 0,
         totalProfit: 0,
         totalProfitPercent: 0
       });
-      setErrors(response.data.errors || []);
+      setErrors([]);
     } catch (error) {
       console.error('ポートフォリオ取得エラー:', error);
       showSnackbar('ポートフォリオの取得に失敗しました', 'error');
