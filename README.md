@@ -68,7 +68,47 @@ npm run build
 
 ## デプロイ
 
-Kubernetesを使用したデプロイ手順は `k8s/` ディレクトリを参照してください。
+### macOS + Rancher Desktop でのデプロイ（推奨）
+
+#### クイックスタート（全自動）
+```bash
+# 全ての手順を自動実行
+chmod +x scripts/quick-start-macos.sh
+./scripts/quick-start-macos.sh
+```
+
+#### 手動デプロイ
+
+1. **セットアップ**
+   ```bash
+   chmod +x scripts/setup-macos.sh
+   ./scripts/setup-macos.sh
+   ```
+
+2. **環境変数の設定**
+   ```bash
+   cp env.example .env
+   # .envファイルを編集してNotion APIトークン等を設定
+   ```
+
+3. **イメージのビルドとプッシュ**
+   ```bash
+   ./scripts/build-images.sh
+   ```
+
+4. **Kubernetes へのデプロイ**
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+5. **アプリケーションへのアクセス**
+   ```bash
+   # ポートフォワーディング
+   kubectl port-forward service/stock-portfolio-frontend-service 3000:80 -n stock-portfolio
+   kubectl port-forward service/stock-portfolio-backend-service 3001:80 -n stock-portfolio
+   ```
+
+詳細な手順は `k8s/DEPLOY.md` を参照してください。
 
 ## ライセンス
 

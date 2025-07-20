@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: your-registry/stock-portfolio-frontend:latest
+        image: localhost:5000/stock-portfolio-frontend:latest
         ports:
         - containerPort: 80
         env:

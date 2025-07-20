@@ -1,73 +1,94 @@
-# Kubernetes デプロイ手順書
+# Kubernetes デプロイ手順書 (Rancher Desktop版)
 
 ## 前提条件
 
-- Kubernetes クラスター（v1.20以上）
+- macOS 10.15 (Catalina) 以上
+- Rancher Desktop がインストール済み
+- Kubernetes が有効化されている
+- ローカルレジストリが有効化されている
 - kubectl が設定済み
-- Docker レジストリへのアクセス権限
-- ドメイン名とSSL証明書の設定
 
-## 1. 環境変数の準備
+## 1. Rancher Desktop の設定
 
-### 1.1 Notion API設定
-1. [Notion Developers](https://developers.notion.com/) でインテグレーションを作成
-2. インテグレーショントークンを取得
-3. データベースを作成し、データベースIDを取得
-4. データベースにインテグレーションを追加
+### 1.1 ローカルレジストリの有効化
+1. Rancher Desktop を開く
+2. 設定 → Kubernetes → レジストリ
+3. 「ローカルレジストリを有効にする」をチェック
+4. ポート: 5000 を設定
+5. 設定を保存して再起動
 
-### 1.2 Secret の更新
+### 1.2 自動セットアップ（推奨）
 ```bash
-# Base64エンコード
-echo -n "your_notion_token" | base64
-echo -n "your_database_id" | base64
-
-# secret.yaml を更新
-kubectl apply -f k8s/secret.yaml
+# セットアップスクリプトを実行
+chmod +x scripts/setup-macos.sh
+./scripts/setup-macos.sh
 ```
+
+### 1.3 クイックスタート（全自動）
+```bash
+# 全ての手順を自動実行
+chmod +x scripts/quick-start-macos.sh
+./scripts/quick-start-macos.sh
+```
+
+### 1.4 環境変数の準備
+```bash
+# .env ファイルを作成
+cp env.example .env
+```
+
+必要な環境変数：
+- `NOTION_TOKEN`: Notion API トークン
+- `NOTION_DATABASE_ID`: Notion データベースID
 
 ## 2. イメージのビルドとプッシュ
 
-### 2.1 バックエンド
+### 2.1 自動ビルド（推奨）
 ```bash
-cd backend
-docker build -t your-registry/stock-portfolio-backend:latest .
-docker push your-registry/stock-portfolio-backend:latest
+# macOS
+chmod +x scripts/build-images.sh
+./scripts/build-images.sh
 ```
 
-### 2.2 フロントエンド
+### 2.2 手動ビルド
 ```bash
-cd frontend
-npm run build
-docker build -t your-registry/stock-portfolio-frontend:latest .
-docker push your-registry/stock-portfolio-frontend:latest
+# バックエンド
+cd backend
+docker build -t localhost:5000/stock-portfolio-backend:latest .
+docker push localhost:5000/stock-portfolio-backend:latest
+
+# フロントエンド
+cd ../frontend
+docker build -t localhost:5000/stock-portfolio-frontend:latest .
+docker push localhost:5000/stock-portfolio-frontend:latest
 ```
 
 ## 3. Kubernetes リソースのデプロイ
 
-### 3.1 名前空間の作成
+### 3.1 自動デプロイ（推奨）
 ```bash
-kubectl apply -f k8s/namespace.yaml
+# macOS
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
 ```
 
-### 3.2 設定の適用
+### 3.2 手動デプロイ
 ```bash
+# 名前空間の作成
+kubectl apply -f k8s/namespace.yaml
+
+# 設定の適用
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/secret.yaml
-```
 
-### 3.3 デプロイメントの作成
-```bash
+# デプロイメントの作成
 kubectl apply -f k8s/backend-deployment.yaml
 kubectl apply -f k8s/frontend-deployment.yaml
-```
 
-### 3.4 サービスの作成
-```bash
+# サービスの作成
 kubectl apply -f k8s/service.yaml
-```
 
-### 3.5 Ingress の作成
-```bash
+# Ingress の作成
 kubectl apply -f k8s/ingress.yaml
 ```
 
@@ -83,12 +104,7 @@ kubectl get pods -n stock-portfolio
 kubectl get services -n stock-portfolio
 ```
 
-### 4.3 Ingress の確認
-```bash
-kubectl get ingress -n stock-portfolio
-```
-
-### 4.4 ログの確認
+### 4.3 ログの確認
 ```bash
 # バックエンドログ
 kubectl logs -f deployment/stock-portfolio-backend -n stock-portfolio
@@ -97,97 +113,74 @@ kubectl logs -f deployment/stock-portfolio-backend -n stock-portfolio
 kubectl logs -f deployment/stock-portfolio-frontend -n stock-portfolio
 ```
 
-## 5. スケーリング
-
-### 5.1 手動スケーリング
+### 4.4 ポートフォワーディング（ローカルアクセス）
 ```bash
-# バックエンドを3レプリカにスケール
-kubectl scale deployment stock-portfolio-backend --replicas=3 -n stock-portfolio
+# バックエンドAPI
+kubectl port-forward service/stock-portfolio-backend-service 3001:80 -n stock-portfolio
 
-# フロントエンドを3レプリカにスケール
-kubectl scale deployment stock-portfolio-frontend --replicas=3 -n stock-portfolio
+# フロントエンド
+kubectl port-forward service/stock-portfolio-frontend-service 3000:80 -n stock-portfolio
 ```
 
-### 5.2 HPA（Horizontal Pod Autoscaler）の設定
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: stock-portfolio-backend-hpa
-  namespace: stock-portfolio
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: stock-portfolio-backend
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-```
+## 5. アプリケーションへのアクセス
 
-## 6. 監視とログ
+### 5.1 ポートフォワーディング経由
+- フロントエンド: http://localhost:3000
+- バックエンドAPI: http://localhost:3001
 
-### 6.1 Prometheus メトリクス
+### 5.2 NodePort 経由（代替）
 ```bash
-# メトリクスの確認
-kubectl top pods -n stock-portfolio
-kubectl top nodes
+# NodePort サービスを作成
+kubectl expose deployment stock-portfolio-frontend --type=NodePort --port=80 -n stock-portfolio
+kubectl expose deployment stock-portfolio-backend --type=NodePort --port=3001 -n stock-portfolio
+
+# ポートを確認
+kubectl get services -n stock-portfolio
 ```
 
-### 6.2 ログの集約
-```bash
-# 全ポッドのログを確認
-kubectl logs -l app=stock-portfolio -n stock-portfolio
-```
+## 6. トラブルシューティング
 
-## 7. トラブルシューティング
-
-### 7.1 ポッドが起動しない場合
+### 6.1 ポッドが起動しない場合
 ```bash
 # ポッドの詳細を確認
 kubectl describe pod <pod-name> -n stock-portfolio
 
 # イベントを確認
-kubectl get events -n stock-portfolio
+kubectl get events -n stock-portfolio --sort-by='.lastTimestamp'
 ```
 
-### 7.2 サービスに接続できない場合
+### 6.2 イメージが見つからない場合
 ```bash
-# サービスの詳細を確認
-kubectl describe service stock-portfolio-backend-service -n stock-portfolio
+# レジストリの確認
+curl http://localhost:5000/v2/_catalog
 
-# エンドポイントを確認
-kubectl get endpoints -n stock-portfolio
+# イメージの確認
+curl http://localhost:5000/v2/stock-portfolio-backend/tags/list
+curl http://localhost:5000/v2/stock-portfolio-frontend/tags/list
 ```
 
-### 7.3 Ingress の問題
+### 6.3 環境変数の問題
 ```bash
-# Ingress の詳細を確認
-kubectl describe ingress stock-portfolio-ingress -n stock-portfolio
+# Secret の確認
+kubectl get secret stock-portfolio-secret -n stock-portfolio -o yaml
 
-# Ingress コントローラーのログを確認
-kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
+# ConfigMap の確認
+kubectl get configmap stock-portfolio-config -n stock-portfolio -o yaml
 ```
 
-## 8. 更新とロールバック
+## 7. 更新とロールバック
 
-### 8.1 アプリケーションの更新
+### 7.1 アプリケーションの更新
 ```bash
-# 新しいイメージをプッシュ
-docker build -t your-registry/stock-portfolio-backend:v2 .
-docker push your-registry/stock-portfolio-backend:v2
+# 新しいイメージをビルド
+./scripts/build-images.sh v2
 
 # デプロイメントを更新
-kubectl set image deployment/stock-portfolio-backend backend=your-registry/stock-portfolio-backend:v2 -n stock-portfolio
+kubectl set image deployment/stock-portfolio-backend backend=localhost:5000/stock-portfolio-backend:v2 -n stock-portfolio
+kubectl set image deployment/stock-portfolio-frontend frontend=localhost:5000/stock-portfolio-frontend:v2 -n stock-portfolio
 ```
 
-### 8.2 ロールバック
+### 7.2 ロールバック
 ```bash
 # ロールバック履歴を確認
 kubectl rollout history deployment/stock-portfolio-backend -n stock-portfolio
@@ -196,12 +189,50 @@ kubectl rollout history deployment/stock-portfolio-backend -n stock-portfolio
 kubectl rollout undo deployment/stock-portfolio-backend -n stock-portfolio
 ```
 
-## 9. クリーンアップ
+## 8. クリーンアップ
 
+### 8.1 自動クリーンアップ（推奨）
+```bash
+# macOS
+chmod +x scripts/cleanup.sh
+./scripts/cleanup.sh
+```
+
+### 8.2 手動クリーンアップ
 ```bash
 # 全リソースを削除
 kubectl delete namespace stock-portfolio
 
-# または個別に削除
-kubectl delete -f k8s/
+# イメージを削除
+docker rmi localhost:5000/stock-portfolio-backend:latest
+docker rmi localhost:5000/stock-portfolio-frontend:latest
+```
+
+## 9. 開発時の便利なコマンド
+
+### 9.1 リアルタイム監視
+```bash
+# ポッドの監視
+kubectl get pods -n stock-portfolio -w
+
+# ログの監視
+kubectl logs -f -l app=stock-portfolio -n stock-portfolio
+```
+
+### 9.2 デバッグ
+```bash
+# ポッドに入る
+kubectl exec -it <pod-name> -n stock-portfolio -- /bin/sh
+
+# 一時的なポートフォワーディング
+kubectl port-forward <pod-name> 8080:3001 -n stock-portfolio
+```
+
+### 9.3 リソース使用量の確認
+```bash
+# リソース使用量
+kubectl top pods -n stock-portfolio
+
+# 詳細なリソース情報
+kubectl describe nodes
 ``` 

@@ -1,5 +1,5 @@
 # ビルドステージ
-FROM node:18-alpine as build
+FROM --platform=linux/amd64 node:18-alpine as build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # 本番ステージ
-FROM nginx:alpine
+FROM --platform=linux/amd64 nginx:alpine
 
 # nginx設定をコピー
 COPY nginx.conf /etc/nginx/nginx.conf
